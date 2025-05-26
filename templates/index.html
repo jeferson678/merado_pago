@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pago con MercadoPago</title>
+  <!-- SDK de MercadoPago para tokenizar -->
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+</head>
+<body>
+  <h1>Prueba de Pago Automático con Tokenización</h1>
+
+  <form id="payment-form">
+    <label>
+      Número de tarjeta:
+      <input type="text" id="cardNumber" required />
+    </label><br/><br/>
+
+    <label>
+      Fecha de expiración (MM/AA):
+      <input type="text" id="cardExpirationDate" placeholder="MM/AA" required />
+    </label><br/><br/>
+
+    <label>
+      Código de seguridad (CVV):
+      <input type="text" id="securityCode" required />
+    </label><br/><br/>
+
+    <label>
+      Nombre del titular:
+      <input type="text" id="cardholderName" required />
+    </label><br/><br/>
+
+    <label>
+      Documento:
+      <input type="text" id="docNumber" required />
+    </label><br/><br/>
+
+    <label>
+      Monto:
+      <input type="number" id="amount" step="0.01" required />
+    </label><br/><br/>
+
+    <label>
+      Email:
+      <input type="email" id="email" required />
+    </label><br/><br/>
+
+    <button type="submit">Pagar</button>
+  </form>
+
+  <div id="resultado"></div>
+
+  <script>
+    // Reemplazá con tu Public Key de MercadoPago
+    const mp = new MercadoPago('APP_USR-2d1193c6-576b-429f-8ef7-01359d75295c', {
+      locale: 'es-AR'
+    });
+
+    const cardForm = mp.cardForm({
+      amount: document.getElementById("amount").value,
+      autoMount: false,
+      form: {
+        id: "payment-form",
+        cardNumber: {
+          id: "cardNumber",
+        },
+        expirationDate: {
+          id: "cardExpirationDate",
+        },
+        securityCode: {
+          id: "securityCode",
+        },
+        cardholderName: {
+          id: "cardholderName",
+        },
+        identificationNumber: {
+          id: "docNumber",
+        },
+        issuer: {
+          id: "issuer",
+        },
+      },
+      callbacks: {
+        onFormMounted: (error) => {
+          if (error) return console.warn("Form Mounted error: ", error);
+        },
+        onCardTokenReceived: async (token) => {
+          const tokenId = token.id;
+          const amount = document.getElementById("amount").value;
+          const email = document.getElementById("email").value;
+
+          // Enviar el token y demás datos a backend para crear el pago
+          const data = {
+            token: tokenId,
+            amount: amount,
+            email: email,
+            payment_method_id: "visa" // podés cambiar o dejar que backend detecte
+          };
+
+          try {
+            const response = await fetch("/pago-automatico", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(data)
+            });
+
+            const json = await response.json();
+            const resultado = document.getElementById("resultado");
+            if (response.ok) {
+              resultado.innerHTML = `<pre>${JSON.stringify(json, null, 2)}</pre>`;
+            } else {
+              resultado.textContent = "Error: " + (json.error || "Error desconocido");
+            }
+          } catch (error) {
+            resultado.textContent = "Error al conectar con el servidor.";
+          }
+        },
+        onSubmit: (event) => {
+          event.preventDefault();
+          cardForm.createCardToken();
+        }
+      }
+    });
+
+    cardForm.mount();
+  </script>
+</body>
+</html>
