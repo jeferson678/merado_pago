@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pago automático con Mercado Pago</title>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+</head>
+<body>
+  <h2>Pagar con tarjeta</h2>
+
+  <form id="form-checkout">
+    <input type="text" name="cardholderName" id="form-checkout__cardholderName" placeholder="Nombre del titular" /><br><br>
+    <input type="email" name="cardholderEmail" id="form-checkout__cardholderEmail" placeholder="Email del comprador" /><br><br>
+    <input type="text" name="cardNumber" id="form-checkout__cardNumber" placeholder="Número de tarjeta" /><br><br>
+    <input type="text" name="cardExpirationDate" id="form-checkout__cardExpirationDate" placeholder="MM/YY" /><br><br>
+    <input type="text" name="securityCode" id="form-checkout__securityCode" placeholder="CVV" /><br><br>
+
+    <button type="submit" id="form-checkout__submit">Pagar $0.50</button>
+  </form>
+
+  <pre id="response"></pre>
+
+  <script>
+    const mp = new MercadoPago('APP_USR-2d1193c6-576b-429f-8ef7-01359d75295c', {
+      locale: 'es-AR'
+    });
+
+    const cardForm = mp.cardForm({
+      amount: "0.5",
+      autoMount: true,
+      form: {
+        id: "form-checkout",
+        cardNumber: { id: "form-checkout__cardNumber" },
+        expirationDate: { id: "form-checkout__cardExpirationDate" },
+        securityCode: { id: "form-checkout__securityCode" },
+        cardholderName: { id: "form-checkout__cardholderName" },
+        cardholderEmail: { id: "form-checkout__cardholderEmail" },
+      },
+      callbacks: {
+        onFormMounted: error => {
+          if (error) return alert("Error al montar el formulario");
+        },
+        onSubmit: event => {
+          event.preventDefault();
+
+          cardForm.getCardFormData().then(data => {
+            fetch("/pago-automatico", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                token: data.token,
+                amount: 0.5,
+                email: data.cardholderEmail,
+                payment_method_id: data.paymentMethodId
+              }),
+            })
+              .then(res => res.json())
+              .then(result => {
+                document.getElementById("response").textContent = JSON.stringify(result, null, 2);
+              })
+              .catch(error => {
+                document.getElementById("response").textContent = "Error: " + error.message;
+              });
+          });
+        }
+      }
+    });
+  </script>
+</body>
+</html>
